@@ -14,22 +14,15 @@ with open("config.json") as f:
 token = cdata["token"]
 prefix = cdata["prefix"]
 ignorestr = [
-    ',g',
-    ',gen',
-    ',generate',
-    ',',
-    'g',
-    '.',
-    ',,g',
-    ',gg',
-    '.g',
-    '<@990349299873382430>'
+    #игнорируемые строки, которые не будет заносить в genwords.txt
+    '@'
 ]
 endpoints = [
+    #знаки препинания в конце сообщения
     '.',
     '!',
     '?',
-    '...',
+    `'...',
     '?!?!?!???!?!'
     '',
     '',
@@ -44,31 +37,37 @@ bot.remove_command('help')
 @bot.event
 async def on_ready():
     print('booted up')
+
 @bot.event
 async def on_message(message):
     ctx = message.channel
-    if any(item.lower() in message.content.lower() for item in ignorestr):
+    #записывает слова в genwords.txt
+    if any(item.lower() in message.content.lower() for item in ignorestr): #проверяет, есть ли в сообщении "банворд"
         pass
     else:
-        if message.author == bot.user:
+        if message.author == bot.user: #проверяет, является ли автор сообщения сам бот
             return
         else:
             mescor = message.content
-            if len(mescor) < 75:
+            if len(mescor) < 75: #если в сообщении больше 75 символов - игнорирует, если меньше - заносит в genwords.txt
                 mescorr = mescor.split()
                 for item in mescorr:
+                    #записывает слова в genwords.txt
                     f = open("src\genwords.txt", "a", encoding='utf-8')
                     f.write(item + '\n')
                     f.close()
                 if message.attachments:
+                    #записывает ссылку на вложение, если оно есть (для генерации изображений)
                     f = open("src\genimages.txt", "a", encoding='utf-8')
                     f.write(message.attachments[0].url + '\n')
                     f.close()
             else:
                 pass
     if bot.user in message.mentions:
+        #генерация сообщения, если бота пинганули
         with open("src\genwords.txt", "r", encoding='utf-8') as f:
             genphrases = f.readlines()
+        #генерирует сообщение
         intparts = random.choice(range(1, 4))
         endp = random.choice(endpoints)
         if intparts == 1:
@@ -78,13 +77,13 @@ async def on_message(message):
         if intparts == 3:
             await ctx.send(random.choice(genphrases).replace("\n", "") + " " + random.choice(genphrases).replace("\n", "") + " " + random.choice(genphrases).replace("\n", "") +
                            endp)
-    await bot.process_commands(message)
+    await bot.process_commands(message) #продолжает обрабатывать команды
 
-@bot.command(aliases = ['help'])
+@bot.command(aliases = ['help']) #команда хелпа
 async def info(ctx):
-    await ctx.send('**информациа**\nбот собирает слова из всех сообщений которые видит, и потом использует их для генерации несмешных сообщений и картинок (да я спиздил идею у геная иче?)'+
-    '\nпишет vosq#5053\n\n**список команд мдаа**\n`,gen` - генерирует сообщение\n`,dem` - генерирует демотиватор\n\n**особые благодарности**:\nHoul')
-@bot.command(aliases=['g', 'gen'])
+    await ctx.send('текст хелпа')
+    
+@bot.command(aliases=['g', 'gen']) #генерация сообщений командой
 async def generate(ctx):
     with open("src\genwords.txt", "r", encoding='utf-8') as f:
         genphrases = f.readlines()
@@ -129,4 +128,33 @@ async def demotivator(ctx):
     fileDem = nextcord.File("demresult.jpg", filename="demotivator.jpg")
     await ctx.send('чзх', file=fileDem)
 
+@bot.command(aliases=['dc', 'demcreate', 'demc'])
+async def demotivatorcreate(ctx, text1:str=None, text2:str=None):
+    with open("src\genimages.txt", "r", encoding='utf-8') as f2:
+        genimgs = f2.readlines()
+    if not text2:
+        text2 = ' '
+    if not text1:
+        await ctx.send('ебланчик, ты забыл аргументы')
+    else:
+        if not ctx.message.attachments:
+            await ctx.send('ебланчик ты картинку забыл')
+        else:
+            if len(text1) > 25:
+                await ctx.send('один из аргументов слишком длинный, лаконичнее сука')
+            elif len(text2) > 25:
+                await ctx.send('один из аргументов слишком длинный, лаконичнее сука')
+            else:
+                opener = urllib.request.build_opener()
+                opener.addheaders=[('User-Agent','Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/36.0.1941.0 Safari/537.36')]
+                urllib.request.install_opener(opener)
+                imgUrl = ctx.message.attachments[0].url
+                filename = 'src/attach.jpg'
+                image_url = imgUrl
+                urllib.request.urlretrieve(image_url, filename)
+                fileDem = nextcord.File("demresult.jpg", filename="demotivator.jpg")
+                demGen = Demotivator(text1, text2)
+                demGen.create('src/attach.jpg')
+                await ctx.send('чзх', file=fileDem)
+    
 bot.run(token)
